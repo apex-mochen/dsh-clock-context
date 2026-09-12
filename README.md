@@ -119,6 +119,42 @@ The `text` callback is a function, not a string — that is what makes the value
 Built-in context orders are `SANDBOX_POLICY=110`, `APPROVAL_POLICY=115`, `SUBAGENT_DELEGATION=120`;
 the default `105` places the clock first.
 
+## Design notes
+
+Why the seams and shapes are what they are — the questions a reviewer would otherwise have to ask.
+
+**Why `context()` and not `section()` or `variable()`.** The system-prompt seam offers three
+registration points: `section` for static guidance, `variable` for values referenced as `{{name}}`
+inside a section (and which throws when a referenced value is unset), and `context` for dynamic
+runtime snapshots. A clock is exactly the third kind: a value that changes on its own and belongs in
+the per-turn snapshot rather than in the static instructions. `variable` would also force the text to
+be interpolated into some section, which is not what a standalone fact wants.
+
+**Why a function, not a string.** `text` is a provider evaluated on every assembly. That is the whole
+mechanism: a string captured at load time would freeze at the moment the profile booted, which is the
+failure this plugin exists to prevent.
+
+**Why `order: 105`.** The built-in context orders are `SANDBOX_POLICY = 110`,
+`APPROVAL_POLICY = 115`, `SUBAGENT_DELEGATION = 120`. The clock is context-setting information, so
+it goes first by default; the value is configurable.
+
+**Why the entry is named `clock:now`.** Same-layer duplicate names throw, so contributions are
+namespaced. `clock:` is this plugin's prefix.
+
+**Why the provider is synchronous.** The seam type is `(context) => string` — it cannot await. That
+is not a constraint we work around: reading `Date` needs no I/O, so there is nothing to prefetch.
+
+**Why there is no `Config` schema.** The convention is to declare one with `schemastery`, and this
+plugin deliberately does not, for two reasons. It imports nothing at runtime — every option is
+optional and merged over defaults, so a schema would add a runtime dependency (or a resolution
+failure risk) to validate nine booleans and strings. And the options are read per assembly, so an
+invalid value degrades to the default rather than breaking the turn. If the marketplace prefers a
+declared schema, that is a small addition, not a redesign — say so and it will be added.
+
+**Why zero dependencies.** This plugin is loaded into every session of every profile it is installed
+in. That position argues for the smallest possible surface: one file, Node built-ins only, nothing to
+audit beyond it.
+
 ## Compatibility
 
 - DSH `0.1.x` (peer: `@deepseek-ai/cordis ^4.0.1`)
