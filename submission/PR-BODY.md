@@ -50,9 +50,12 @@ this one instead of arguing for it.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit tests (zone offsets, DST, precision, option handling) | `node test/smoke.mjs` | 8 checks passed |
+| Unit tests (zone offsets, DST, precision, option handling, packaging contract) | `node test/smoke.mjs` | 12 checks passed |
 | Static rules R1/R2 | `node scripts/static-rules.mjs .` | passed |
-| Packed contents | `npm pack --dry-run` | 9 files, no stray artifacts |
+| Packed contents | `npm pack --dry-run` | 10 files, no stray artifacts |
 | Runtime end-to-end | install the packed tarball into a `headless` profile, ask the agent to quote its runtime context | quoted timestamp was within 2s of the host clock |
 | Web profile composition | `dsh --profile web --patch <probe> --dump-config` | inserts cleanly |
+| Config plumbing | override six options through an id-targeted patch, run headless | all six took effect; the rendered epoch matched the timestamp exactly |
+| Opt-out | `enabled: false` through the same patch | agent reports no such line, and its own reasoning shows only the file/approval policy in context |
+| Uninstall | `dsh plugin --profile headless remove` | clears both `dsh.profile.bundles` and `dependencies` |
 | Entry file format | this repo's `readEntries` + `validateEntries` on the submitted yml | 0 problems; `dumpEntry()` round-trips byte-identically |

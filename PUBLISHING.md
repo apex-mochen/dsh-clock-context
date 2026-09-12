@@ -231,13 +231,79 @@ D 双端契约、E 异步状态、F 资源释放、G 回调隔离、H 输出卫�
 
 | 验证 | 命令 | 结果 |
 |---|---|---|
-| 单元测试（含夏令时、precision） | `node test/smoke.mjs` | **8 checks passed** |
+| 单元测试（含夏令时、precision、打包契约、BOM 守卫） | `node test/smoke.mjs` | **12 checks passed** |
 | 官方静态规则 R1/R2 | `node scripts/static-rules.mjs .` | **静态规则：全过** |
-| 发布产物装箱 | `npm pack --dry-run` | 9 个文件 / 14.1 kB，无多余文件 |
+| 官方条目格式校验 | 市场仓库的 `readEntries` + `validateEntries` | **0 个问题**，`dumpEntry()` 逐字节一致 ✅ |
+| 发布产物装箱 | `npm pack --dry-run` | 10 个文件 / 20.4 kB，无多余文件 |
 | tarball 安装 → 组装树 | `dsh plugin --profile headless add <tgz>` | 树中出现 `dsh-clock-context` ✅ |
 | **运行时端到端** | headless agent 复述上下文时间行 | 与对照组**相差 2 秒** ✅ |
 | web profile 层叠组装 | `dsh --profile web --patch <probe> --dump-config` | 干净插入，**真实 profile 未被改动** ✅ |
+| **配置链路（本轮补的缺口）** | id 定位 patch 覆盖 6 个选项后跑 headless | **6/6 全部生效**，epoch 数值精确吻合 ✅ 见 §6.4 |
+| **关闭开关（反向验证）** | `enabled: false` 后跑 headless | agent 回答「没有」；其推理显示上下文里只有 file policy / approval policy ✅ |
+| 卸载回滚 | `dsh plugin --profile headless remove` | bundles 与 dependencies 均干净移除，装回一条命令 ✅ |
+| CI 工作流语法 | 用 js-yaml 解析 + 结构断言 | PASS ✅ |
 | 未通过项 | `@qing3a/dsh-plugin-verify` 完整运行时验证 | ⏳ 未跑（需要 DSH **源码** checkout，见 §2） |
+
+### 6.4 配置链路的端到端验证配方（可复现）
+
+**为什么单独验**：配置选项此前只有单元测试（直接调 `renderClock(options)`）。
+那条路径**绕过了 loader**，所以"文档里写的 `config:` 能不能真的传进 `apply(ctx, config)`"
+一直是未验证状态 —— 如果这条链路不通，README 里承诺的功能就是坏的。
+
+**做法**：用 profile patch 的 id 定位覆盖（这正是用户在 `cordis.patch.yml` 里的写法），
+并且每个选项都取**特征值**，让生效与否一眼可辨：
+
+```yaml
+# probe.yml
+- id: dsh-clock-context
+  config:
+    label: NOW-PROBE
+    timeZone: UTC
+    locale: en-US
+    includeUtc: false
+    includeEpoch: true
+    hint: false
+```
+
+```powershell
+# 1. 先看配置有没有被合并进树
+dsh --profile headless --patch probe.yml --dump-config
+#    → "# == dsh-clock-context, patched by <probe.yml>" 且 config 块完整出现
+
+# 2. 再看运行时是否真的按配置渲染
+dsh --profile headless --patch probe.yml "把运行上下文里给当前时间的那一行原文引用出来，不要解释。"
+```
+
+**实测输出**：
+
+```text
+NOW-PROBE: Saturday, 09/12/2026, 05:27:42 (UTC, UTC+00:00) · epoch 1789190862.
+```
+
+| 选项 | 期望表现 | 实测 |
+|---|---|---|
+| `label: NOW-PROBE` | 标题被替换 | ✅ |
+| `timeZone: UTC` | 显示 `UTC+00:00` | ✅ |
+| `locale: en-US` | 英文日期（而非宿主的中文格式） | ✅ |
+| `includeUtc: false` | 不出现 `UTC 2026-…` | ✅ |
+| `includeEpoch: true` | 出现 `epoch …` | ✅ |
+| `hint: false` | 不出现 "authoritative clock" 那句 | ✅ |
+
+**数值交叉验证**：`05:27:42` 的 Unix 时间应为 `1789190862`，实测输出的 epoch 正是该值 ✅
+
+**反向验证**（顺带证明 agent 不会凭空编造时间行）：
+
+```yaml
+- id: dsh-clock-context
+  config:
+    enabled: false
+```
+
+```text
+agent 回答：没有
+（其推理过程显示上下文里只有 "file policy, approval policy" —— 时间行确实不存在）
+组装树仍含 dsh-clock-context 节点，只是贡献文本为空 ✅
+```
 
 ---
 
