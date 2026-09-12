@@ -278,7 +278,31 @@ PowerShell 7 无此问题，但只要有人用 5.1 跑，就得以 BOM 为准。
 | `submission/PR-BODY.md` | 提 PR 时贴进描述框 |
 | `submission/README.md` | 投稿包的使用说明与前置条件清单 |
 
-### 7.4 开发循环
+### 7.4 卸载与回滚（已实测）
+
+装进日常 profile 之前，先确认它是可逆的 —— 实测过整条回滚路径：
+
+```powershell
+dsh plugin --profile web remove dsh-clock-context
+```
+
+实测结果（在 headless profile 上）：
+
+```text
+卸载前  bundles: @deepseek-ai/dsh-base, @deepseek-ai/dsh-headless, dsh-clock-context
+        dependencies: dsh-clock-context
+卸载后  bundles: @deepseek-ai/dsh-base, @deepseek-ai/dsh-headless      ← 干净移除
+        dependencies: （空）
+组装树含 dsh-clock-context: False
+```
+
+**卸载是干净的**：`dsh plugin remove` 会同时把包从 `dsh.profile.bundles` 与 `dependencies`
+里去掉，不需要手工编辑 profile 文件。装回来只要再跑一次 `.\dev-install.ps1`。
+
+> ⚠️ `dev-install.ps1` 末尾有显式 `exit 0`：脚本中途调用过 npm / pnpm，
+> 它们的退出码会留在 `$LASTEXITCODE` 里，导致"明明成功却返回 1"，调用方会误判失败。
+
+### 7.5 开发循环
 
 ```powershell
 # 改代码

@@ -1,4 +1,4 @@
-﻿# dev-install.ps1 — 打包本插件并安装到指定 DSH profile。
+# dev-install.ps1 — 打包本插件并安装到指定 DSH profile。
 #
 # 为什么用 tarball 而不是直接指目录：npm pack 出来的 tarball 就是将来发布到
 # npm / 市场的那份产物，用它安装可以保证「本地测的」和「发出去的」是同一个东西，
@@ -32,3 +32,10 @@ if ($cfg -match 'dsh-clock-context') {
 Write-Host ""
 Write-Host "完成。重启 DSH（web profile 需要重启应用）后生效。" -ForegroundColor Green
 Write-Host "验证方法：新开一轮，让 agent「把运行上下文里给当前时间的那一行原文引用出来」。"
+Write-Host ""
+Write-Host "卸载回滚：dsh plugin --profile $Profile remove dsh-clock-context" -ForegroundColor DarkGray
+Write-Host ""
+
+# 显式成功退出：脚本中途调用过 npm / pnpm，它们的退出码会留在 $LASTEXITCODE，
+# 让"明明成功却返回 1"——调用方或 CI 会误判为失败。
+exit 0
