@@ -8,34 +8,42 @@
 > | **Verified 站投稿 PR** | ✅ **已提交** → https://github.com/qing3a/dsh-plugin-verify/pull/4 |
 > | **主市场投稿分支** | ✅ **已备好**（fork `apex-mochen/awesome-dsh-plugin`，分支 `add-dsh-clock-context`，文件已提交） |
 > | **主市场投稿 PR** | ⏳ **已交给计划任务自动开**（见下） |
-> | web profile 生效 | ⏳ 待重启 DSH Web |
+> | 上架监控 | ⏳ 已交给计划任务：**一旦被市场收录就弹通知 + 桌面写验证说明** |
+> | web profile 生效 | ✅ **已生效**（2026-09-12 14:00 起每轮上下文含时间行，与机器时钟差 1 秒） |
 >
-> ### 主市场 PR 是自动开的（计划任务）
+> ### 两件事都交给计划任务了
 >
-> 因为 agent 无法在会话之外自己醒来，所以这件事交给 Windows 计划任务：
+> 因为 agent 无法在会话之外自己醒来，"到点开 PR"和"盯着是否上架"都由 Windows 计划任务兜底：
 >
-> | 项 | 值 |
-> |---|---|
-> | 任务名 | `dsh-clock-context-open-market-pr` |
-> | 脚本 | `open-market-pr.ps1`（仓库根目录） |
-> | 触发 | 2026-09-13 13:50 起，**每 30 分钟一次，持续 5 小时** |
-> | 幂等 | 已存在 PR 就立即退出 —— 重复触发无副作用 |
-> | 守卫 | 仓库未满 1 天时直接退出（**绝不制造必然失败的红叉 PR**） |
-> | 凭据 | **不落盘**：每次运行时才用 `git credential fill` 从凭据管理器取 |
-> | 日志 | `open-market-pr.log`（已被 `.gitignore` 忽略） |
+> | | 开 PR | 盯上架 |
+> |---|---|---|
+> | 任务名 | `dsh-clock-context-open-market-pr` | `dsh-clock-context-watch-market` |
+> | 脚本 | `submission/open-market-pr.ps1` | `submission/watch-market-status.ps1` |
+> | 触发 | 2026-09-13 **13:50** 起，每 30 分钟 × 3 天 | 2026-09-13 **14:10** 起，每 30 分钟 × 3 天 |
+> | 幂等 | 已有 PR 即退出 | 上架后**自动注销自己** |
+> | 守卫 | 仓库未满 1 天即退出（**绝不制造红叉 PR**） | 只读检查，不改任何仓库 |
+> | 凭据 | **不落盘**：运行时才 `git credential fill` 取 | 同左（取不到就只查公开目录） |
+> | 日志 | `submission/open-market-pr.log` | `submission/market-status.log` |
 >
-> **查看结果**
+> **上架成功时监控任务会自动做三件事**：
+> 1. 弹一条 Windows 通知
+> 2. 在**桌面**写 `dsh-clock-context-已上架.txt`（含 4 种验证方法）
+> 3. **注销自己** —— 不再打扰
+>
+> **查看状态**
 > ```powershell
-> Get-Content 'E:\下载\deepseek-harness-worker\dsh-clock-context\open-market-pr.log' -Tail 20
-> Get-ScheduledTask -TaskName dsh-clock-context-open-market-pr | Select-Object TaskName, State
+> Get-Content 'E:\下载\deepseek-harness-worker\dsh-clock-context\submission\market-status.log' -Tail 20
+> Get-ScheduledTask | Where-Object TaskName -like 'dsh-clock-context*' | Select TaskName, State
 > ```
 > **不再需要就取消**
 > ```powershell
-> Unregister-ScheduledTask -TaskName dsh-clock-context-open-market-pr -Confirm:$false
+> 'dsh-clock-context-open-market-pr','dsh-clock-context-watch-market' |
+>   ForEach-Object { Unregister-ScheduledTask -TaskName $_ -Confirm:$false }
 > ```
-> **手动立刻开一次**（过了门槛之后）
+> **手动立刻跑一次**
 > ```powershell
-> powershell -NoProfile -ExecutionPolicy Bypass -File 'E:\下载\deepseek-harness-worker\dsh-clock-context\open-market-pr.ps1'
+> powershell -NoProfile -ExecutionPolicy Bypass -File 'E:\下载\deepseek-harness-worker\dsh-clock-context\submission\open-market-pr.ps1'
+> powershell -NoProfile -ExecutionPolicy Bypass -File 'E:\下载\deepseek-harness-worker\dsh-clock-context\submission\watch-market-status.ps1'
 > ```
 >
 > 也可以完全不用脚本，直接在浏览器点这个链接开：
@@ -48,6 +56,41 @@
 > 仓库 2026-09-12 05:46:52 UTC 创建，**未满 1 天的 PR 会被自动检查判失败**。
 > 市场自己的 contributing.md 也写了 "If you're just under the bar, finish the work and resubmit"。
 > 所以先备好分支、到点再开 PR —— 这样第一次提交就是绿的。
+
+---
+
+## 0.5 合并之后多久能被搜到（实测数据，2026-09-12 查证）
+
+| 环节 | 谁来做 | 耗时 |
+|---|---|---|
+| ① 开 PR | 计划任务 | 2026-09-13 13:50 自动 |
+| ② 合并 | 市场维护者人工 review | **中位数 16.5 小时**（实测最近 60 个 PR，47 个已合并；75 分位 20.3 小时；最快的 0.2~1.1 小时是"更新已有条目"，最慢 20.7 天） |
+| ③ **网站可搜** | CI 自动 | **合并后 2~5 分钟** |
+| ④ **GUI 插件市场可搜** | 目录刷新 | 与 ③ 同步（走官方源时） |
+
+**③ 为什么这么快**：`build-site.yml` 监听 `push: branches: [main]`，
+CI 注释原话 —— *"The site still deploys on every push, because a newly merged plugin should be visible right away."*
+
+**④ 的两个源**（`dshmarket/lib/regions.js`）：
+
+| 源 | 地址 | 刷新时机 |
+|---|---|---|
+| 官方 | `https://awesome-dsh-plugin.com/plugins.json` | 合并后立即 |
+| npm 回退 | npm 包 `dsh-plugin-catalog` | **只在夜间发布**（cron `02:23 UTC` = 本地 10:23），最多晚一天 |
+
+回退源存在的原因（注释原话）：*"usable from mainland China refuse any hostname that is not github.com's"*。
+本机实测官方目录**能直接读到** → 走官方源，不用等夜间。
+
+**一条命令自查是否已收录**：
+```powershell
+(Invoke-RestMethod 'https://awesome-dsh-plugin.com/plugins.json' -Proxy 'http://127.0.0.1:7890').plugins.name -contains 'dsh-clock-context'
+```
+
+> 💡 **上架只影响"被发现"，不影响使用**。任何人现在就能装：
+> ```powershell
+> dsh plugin --profile web add github:apex-mochen/dsh-clock-context
+> ```
+> （这条命令已实测：3.7 秒装好并工作。）
 
 本文列出把 `dsh-clock-context` 上架到 DSH 插件市场所需的**全部步骤与文件内容**。
 面向未来的自己：照着做即可，不需要重新调研。
