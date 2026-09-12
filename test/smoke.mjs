@@ -171,4 +171,21 @@ test('the patch file the manifest points at is the one that exists', () => {
   assert.equal(readFileSync(target, 'utf8'), patch, 'resolved patch must be the file under test');
 });
 
+test('dev-install.ps1 keeps its UTF-8 BOM', () => {
+  // Windows PowerShell 5.1 decodes a BOM-less file as ANSI, so the Chinese
+  // strings in this script become mojibake and the parser fails — the script
+  // silently stops working. Any editor that rewrites the file can drop the BOM,
+  // which is exactly what happened once, so assert it here.
+  const script = new URL('../dev-install.ps1', import.meta.url);
+  assert.ok(existsSync(script), 'dev-install.ps1 must exist');
+  const bytes = readFileSync(script);
+  // eslint-disable-next-line no-control-regex
+  assert.ok(/[^\x00-\x7F]/.test(bytes.toString('utf8')), 'script is expected to contain non-ASCII text');
+  assert.deepEqual(
+    [...bytes.subarray(0, 3)],
+    [0xef, 0xbb, 0xbf],
+    'dev-install.ps1 must start with a UTF-8 BOM (Windows PowerShell 5.1 needs it to read the Chinese)',
+  );
+});
+
 console.log(`\n${passed} checks passed.\n`);

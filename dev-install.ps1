@@ -1,4 +1,4 @@
-# dev-install.ps1 — 打包本插件并安装到指定 DSH profile。
+﻿# dev-install.ps1 — 打包本插件并安装到指定 DSH profile。
 #
 # 为什么用 tarball 而不是直接指目录：npm pack 出来的 tarball 就是将来发布到
 # npm / 市场的那份产物，用它安装可以保证「本地测的」和「发出去的」是同一个东西，
