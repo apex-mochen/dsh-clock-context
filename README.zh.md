@@ -54,6 +54,7 @@ dsh plugin --profile web add dsh-clock-context
     label: 当前时间            # 默认 "Current date/time"
     includeUtc: true          # 默认 true
     includeEpoch: false       # 默认 false（Unix 秒）
+    precision: minute         # 'second'（默认）或 'minute'
     hint: true                # 默认 true（附上"这是权威时钟"那句）
     order: 105                # 默认 105（排在 SANDBOX_POLICY=110 之前）
     enabled: true             # 默认 true
@@ -66,11 +67,17 @@ dsh plugin --profile web add dsh-clock-context
 | `label` | string | `Current date/time` | 注入行的前缀 |
 | `includeUtc` | boolean | `true` | 是否附上 UTC 时间 |
 | `includeEpoch` | boolean | `false` | 是否附上 Unix 秒 |
+| `precision` | `'second' \| 'minute'` | `'second'` | 用 `'minute'` 时快照每分钟才变一次 |
 | `hint` | boolean | `true` | 是否附上"用这个、别猜"那句 |
 | `order` | number | `105` | 在运行上下文快照里的排序位 |
 | `enabled` | boolean | `true` | 关掉贡献但不用卸载 |
 
 时区偏移是**每次调用现算**的，所以夏令时切换会自动处理。
+
+> **关于 `precision`。** DSH 只在快照文本**发生变化**时才重新记录，
+> 所以秒级精度意味着每轮都会重记一次快照。这个开销很小 ——
+> 快照是**末尾的 user 角色消息**，不会让前面已缓存的 KV 前缀失效 ——
+> 但如果你希望把开销压到最低，`precision: minute` 可以让文本最多每分钟变一次。
 
 ## 怎么验证它生效了
 
@@ -111,6 +118,22 @@ ctx.inject(['systemPrompt'], (scope) => {
 - DSH `0.1.x`（peer：`@deepseek-ai/cordis ^4.0.1`）
 - Node.js 20+
 - **零运行时依赖**，只用 `Intl`
+
+## 安全提示
+
+**安装 DSH 插件等于授予它进程级权限。** 插件被加载进宿主进程，
+能读写宿主能读写的一切 —— 它**不受沙箱限制**。
+
+本插件的设计目标是**可审计**，而不是"请相信我"：
+
+- **零依赖**：全部实现就是 `lib/index.js`（约 150 行），只用 Node 内置的 `Intl`。
+  `package.json` 里**没有 `dependencies`** 需要审计。
+- **不碰进程、文件、网络**：不启动任何东西、不读文件、不写文件、不发请求。
+  它只注册一条运行上下文字符串，然后结束。
+- **没有定时器**：轮次之间什么都不跑，字符串是在组装上下文时按需渲染的。
+- **一口气能读完**：[`lib/index.js`](./lib/index.js)
+
+如果你不想装它，也可以退而求其次：**要求你的 agent 在任何关于当前时间的表述之前先跑一次 `date`。**
 
 ## 许可
 

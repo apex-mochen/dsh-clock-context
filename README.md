@@ -56,6 +56,7 @@ entry this bundle inserts:
     label: 当前时间            # default: "Current date/time"
     includeUtc: true          # default: true
     includeEpoch: false       # default: false (unix seconds)
+    precision: minute         # 'second' (default) or 'minute'
     hint: true                # default: true (append the "authoritative clock" sentence)
     order: 105                # default: 105 (before SANDBOX_POLICY=110)
     enabled: true             # default: true
@@ -68,11 +69,17 @@ entry this bundle inserts:
 | `label` | string | `Current date/time` | Prefix of the injected line |
 | `includeUtc` | boolean | `true` | Append the UTC instant |
 | `includeEpoch` | boolean | `false` | Append unix seconds |
+| `precision` | `'second' \| 'minute'` | `'second'` | `'minute'` renders a snapshot that only changes once a minute |
 | `hint` | boolean | `true` | Append the "use this, never guess" sentence |
 | `order` | number | `105` | Sort order inside the runtime-context snapshot |
 | `enabled` | boolean | `true` | Turn the contribution off without uninstalling |
 
 The timezone offset is computed per call, so daylight-saving transitions are handled automatically.
+
+> **On `precision`.** DSH only re-records a runtime-context snapshot when its text changes, so at
+> second precision the snapshot is re-recorded every turn. That is cheap — the snapshot is a
+> tail user-role message, so it does not invalidate the cached prefix — but if you prefer the
+> lowest possible churn, `precision: minute` makes the text change at most once a minute.
 
 > **Note on `locale`.** It defaults to the host's locale, so a `zh-CN` machine renders
 > `2026年09月12日星期六 13:12:21` while the label stays English. Set `locale: 'en-US'` for
@@ -117,6 +124,24 @@ the default `105` places the clock first.
 - DSH `0.1.x` (peer: `@deepseek-ai/cordis ^4.0.1`)
 - Node.js 20+
 - No runtime dependencies — only `Intl`.
+
+## Security
+
+**Installing a DSH plugin grants it process-level access.** A plugin is loaded into the host
+process and can read and modify anything the host can — it is not sandboxed.
+
+This plugin is written to be auditable rather than trusted:
+
+- **No dependencies.** The whole implementation is `lib/index.js` (about 150 lines) using only
+  Node's built-in `Intl`. There is no `dependencies` block in `package.json` to audit.
+- **No process, filesystem, or network access.** It starts nothing, reads nothing, writes nothing,
+  and makes no requests. It registers one runtime-context string and stops there.
+- **No timers.** Nothing runs between turns; the string is rendered on demand when the context is
+  assembled.
+- **Read it in one sitting:** [`lib/index.js`](./lib/index.js).
+
+If you would rather not install it, the same effect can be had by telling your agent to run
+`date` before any statement about the current time.
 
 ## License
 

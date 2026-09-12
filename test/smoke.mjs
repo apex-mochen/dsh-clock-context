@@ -97,6 +97,22 @@ test('includeUtc / includeEpoch / hint / label / enabled are honoured', () => {
   assert.equal(renderClock({ enabled: false }, fixed), '');
 });
 
+test('precision "minute" drops seconds from both local and UTC output', () => {
+  const a = new Date('2026-09-12T05:04:27Z');
+  const b = new Date('2026-09-12T05:04:59Z');
+
+  const secA = renderClock({ timeZone: 'UTC', locale: 'en-US' }, a);
+  const secB = renderClock({ timeZone: 'UTC', locale: 'en-US' }, b);
+  assert.notEqual(secA, secB, 'second precision must distinguish 27s from 59s');
+  assert.match(secA, /UTC 2026-09-12T05:04:27Z/);
+
+  const minA = renderClock({ timeZone: 'UTC', locale: 'en-US', precision: 'minute' }, a);
+  const minB = renderClock({ timeZone: 'UTC', locale: 'en-US', precision: 'minute' }, b);
+  assert.equal(minA, minB, 'minute precision must render identical text within a minute');
+  assert.match(minA, /UTC 2026-09-12T05:04Z/);
+  assert.ok(!/:\d\d:\d\d/.test(minA), 'no seconds anywhere in minute precision');
+});
+
 test('zoneOffsetMinutes matches known offsets and handles DST', () => {
   assert.equal(zoneOffsetMinutes(new Date('2026-09-12T05:04:27Z'), 'Asia/Shanghai'), 480);
   assert.equal(zoneOffsetMinutes(new Date('2026-09-12T05:04:27Z'), 'UTC'), 0);

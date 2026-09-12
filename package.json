@@ -4,6 +4,7 @@
   "description": "Give the DSH agent a clock: injects the current date/time into the runtime context on every turn. · 给 agent 一块表：每一轮把当前时间注入运行上下文。",
   "type": "module",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "exports": {
     ".": "./lib/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
