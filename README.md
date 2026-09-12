@@ -169,6 +169,18 @@ context — it reported exactly one.
 - Node.js 20+
 - No runtime dependencies — only `Intl`.
 
+Verified against the community runtime verifier `@qing3a/dsh-plugin-verify`, which boots a mock-LLM
+agent loop with an auditor attached to every hook and checks that all seven waterfall links survive
+the plugin:
+
+```text
+✅ 通过 | 捕获事件: 13 | waterfall: 7/7 | tools/result: 是
+```
+
+The plugin registers no waterfall listener and contributes no tool, so those links should be
+untouched — this is the measurement confirming it rather than the assumption. The raw report is in
+[`submission/verified/verify-report.json`](./submission/verified/verify-report.json).
+
 ## Relationship to existing plugins
 
 If you already run [`liqiming-whu/dsh-environment-context`](https://github.com/liqiming-whu/dsh-environment-context),

@@ -155,6 +155,17 @@ system-prompt 这个 seam 有三个注册点：`section` 放静态指引，`vari
 - Node.js 20+
 - **零运行时依赖**，只用 `Intl`
 
+已通过社区运行时验证器 `@qing3a/dsh-plugin-verify` 的实测：它会启动一个 mock-LLM agent 循环、
+在每个 hook 上挂审计器，检查 7 条 waterfall 链是否全部存活：
+
+```text
+✅ 通过 | 捕获事件: 13 | waterfall: 7/7 | tools/result: 是
+```
+
+本插件不注册任何 waterfall 监听器、不贡献工具，所以那些链本来就不该受影响 ——
+**这里给的是实测确认，而不是推断**。原始报告在
+[`submission/verified/verify-report.json`](./submission/verified/verify-report.json)。
+
 ## 和已有插件的关系
 
 如果你已经在用 [`liqiming-whu/dsh-environment-context`](https://github.com/liqiming-whu/dsh-environment-context)，

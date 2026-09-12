@@ -1,0 +1,34 @@
+{
+  "plugin": "C:\\Users\\ASUS\\dsh-plugins\\dsh-clock-context",
+  "repo": "C:\\Users\\ASUS\\dsh-plugins\\_research\\deepseek-harness",
+  "date": "2026-09-12T05:38:55.969Z",
+  "pass": true,
+  "waterfallFound": [
+    "system-prompt/assemble",
+    "agent/pre-step",
+    "agent/request",
+    "llm/stream",
+    "tools/pre-execute",
+    "tools/execute",
+    "tools/post-execute"
+  ],
+  "waterfallMissing": [],
+  "rules": [
+    {
+      "name": "R1-entry-shape",
+      "pass": true,
+      "detail": "入口 C:\\Users\\ASUS\\dsh-plugins\\dsh-clock-context\\lib\\index.js：namespace 形式 ✓ 且无裸 export default"
+    },
+    {
+      "name": "R2-patch-yaml",
+      "pass": true,
+      "detail": "patch ./cordis.patch.yml：!!js 表达式均位于 config 子树（12 行）"
+    },
+    {
+      "name": "R3-tools-result",
+      "pass": true,
+      "detail": "工具真实执行成功（1 次结果，无 isError）"
+    }
+  ],
+  "detail": "捕获事件: 13 | waterfall: 7/7 | tools/result: 是"
+}

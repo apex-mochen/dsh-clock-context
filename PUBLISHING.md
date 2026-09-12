@@ -152,7 +152,60 @@ node <验证器>/lib/cli.js <插件路径> --repo <本 checkout>                
 5. 输出报告，退出码 `0=通过 / 1=未通过 / 2=环境错误`
 
 **预期**：本插件不注册任何 waterfall 监听器、不贡献工具、不注入独有服务，
-所以那 7 条链**不应该受影响**；预期可过 → 但**尚未实测**（见下方状态）。
+所以那 7 条链**不应该受影响**。
+
+### 2.1 实测结果：✅ 通过（2026-09-12）
+
+```text
+✓ R1-entry-shape: 入口 lib/index.js：namespace 形式 ✓ 且无裸 export default
+✓ R2-patch-yaml: patch ./cordis.patch.yml：!!js 表达式均位于 config 子树（12 行）
+[1/5] 前置检查 DSH checkout
+[2/5] 安装插件 + verify-auditor 到 headless profile
+[3/5] 启动 mock-llm (port 8000)
+[4/5] 跑 headless agent（verify-auditor 监听 waterfall 链）
+[5/5] 分析事件审计
+
+✅ 通过 | 捕获事件: 13 | waterfall: 7/7 | tools/result: 是
+验证器退出码: 0
+```
+
+报告全文（也是 Verified 投稿的核心证据）保存在
+`submission/verified/verify-report.json`：
+
+```json
+{
+  "pass": true,
+  "waterfallFound": ["system-prompt/assemble", "agent/pre-step", "agent/request",
+                     "llm/stream", "tools/pre-execute", "tools/execute", "tools/post-execute"],
+  "waterfallMissing": [],
+  "rules": [
+    { "name": "R1-entry-shape", "pass": true },
+    { "name": "R2-patch-yaml", "pass": true },
+    { "name": "R3-tools-result", "pass": true, "detail": "工具真实执行成功（1 次结果，无 isError）" }
+  ],
+  "detail": "捕获事件: 13 | waterfall: 7/7 | tools/result: 是"
+}
+```
+
+### 2.2 Verified 投稿包
+
+投稿规格与主市场不同，它要三个文件：`manifest.json` · `self_check.json` · `verify-report.json`，
+且 gate 会**重算 SHA-256**，所以不能手写。本仓库提供了生成器：
+
+```bash
+node submission/verified/make-submission.mjs --out <目录> --repo-public --topic-set
+cd <dsh-plugin-verify checkout>
+node scripts/check-submission.mjs <上一步的目录>
+```
+
+**本机彩排结果（用判定站自己的 gate，24 项全绿）**：
+
+```text
+结果: ✅ 通过 — 可提交 PR
+```
+
+⚠️ `--repo-public` / `--topic-set` 是对**仓库状态**的断言，必须显式传入：
+不加时生成器把它们写成 `false`（仓库推送前的诚实值）。详见 `submission/verified/README.md`。
 
 静态规则本地可先跑（秒出，无需 checkout）：
 
@@ -264,8 +317,10 @@ D 双端契约、E 异步状态、F 资源释放、G 回调隔离、H 输出卫�
 | **关闭开关（反向验证）** | `enabled: false` 后跑 headless | agent 回答「没有」；其推理显示上下文里只有 file policy / approval policy ✅ |
 | 卸载回滚 | `dsh plugin --profile headless remove` | bundles 与 dependencies 均干净移除，装回一条命令 ✅ |
 | **快照是否累积**（每轮变化的最大隐患） | 读 `dsh-agent-loop` 的 `RuntimeContextProjection` + 多轮 headless 让 agent 数行数 | **替换而非累积**；agent 报「只有 1 行」✅ |
+| **官方运行时验证（7/7）** | `@qing3a/dsh-plugin-verify`，源码 checkout + mock-llm | **✅ 通过 \| 捕获事件 13 \| waterfall 7/7 \| tools/result 是** ✅ |
+| **Verified 投稿包 gate** | 判定站自己的 `check-submission.mjs` | **24 项全绿 → ✅ 通过 — 可提交 PR** ✅ |
 | CI 工作流语法 | 用 js-yaml 解析 + 结构断言 | PASS ✅ |
-| 未通过项 | `@qing3a/dsh-plugin-verify` 完整运行时验证 | ⏳ 未跑（需要 DSH **源码** checkout，见 §2） |
+| 未通过项 | 无 —— 全部验证项均已通过 ✅ |
 
 ### 6.4 配置链路的端到端验证配方（可复现）
 

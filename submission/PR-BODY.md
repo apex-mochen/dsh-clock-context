@@ -59,3 +59,4 @@ this one instead of arguing for it.
 | Opt-out | `enabled: false` through the same patch | agent reports no such line, and its own reasoning shows only the file/approval policy in context |
 | Uninstall | `dsh plugin --profile headless remove` | clears both `dsh.profile.bundles` and `dependencies` |
 | Entry file format | this repo's `readEntries` + `validateEntries` on the submitted yml | 0 problems; `dumpEntry()` round-trips byte-identically |
+| Runtime verifier | `@qing3a/dsh-plugin-verify` against a built DSH source checkout | `✅ 通过 \| 捕获事件: 13 \| waterfall: 7/7 \| tools/result: 是` |

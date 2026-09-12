@@ -31,6 +31,15 @@ entry is prepared.
   exported `name`, and the manifest pointing at the file that actually exists).
 - CI on Node 20/22/24 with no install step, since there are no dependencies.
 
+### Verification
+
+- Passes the community runtime verifier `@qing3a/dsh-plugin-verify`:
+  `✅ 通过 | 捕获事件: 13 | waterfall: 7/7 | tools/result: 是`. All three rules pass
+  (R1 entry shape, R2 patch YAML, R3 `tools/result` semantics) and none of the seven waterfall
+  links is missing. Raw report: `submission/verified/verify-report.json`.
+- The Verified-station submission package builds and passes that station's own gate
+  (`check-submission.mjs`, 24 checks green) — see `submission/verified/`.
+
 ### Notes
 
 - The implementation has **zero runtime dependencies** and touches no processes, files, network, or
