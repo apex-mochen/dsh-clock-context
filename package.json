@@ -1,0 +1,51 @@
+{
+  "name": "dsh-clock-context",
+  "version": "0.1.0",
+  "description": "Give the DSH agent a clock: injects the current date/time into the runtime context on every turn. · 给 agent 一块表：每一轮把当前时间注入运行上下文。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "test",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "PUBLISHING.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "clock",
+    "time",
+    "current-time",
+    "runtime-context",
+    "context",
+    "session"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  }
+}

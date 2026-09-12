@@ -1,0 +1,11 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+#
+# The `name` must match the package name so the loader can import it from the
+# profile's node_modules. Add a `config:` block to override any of the plugin's
+# options (label / locale / timeZone / includeUtc / includeEpoch / hint / order).
+- insert:
+    - id: dsh-clock-context
+      name: 'dsh-clock-context'
+      # config:
+      #   timeZone: Asia/Shanghai
+      #   includeEpoch: true
