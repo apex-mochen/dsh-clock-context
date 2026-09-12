@@ -6,7 +6,6 @@
 ---
 
 ## 0. 上架前自检清单（对照市场收录硬门槛）
-
 | 门槛 | 状态 | 说明 |
 |---|---|---|
 | `package.json` 声明 **`dsh.bundle`** manifest | ✅ | `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`。**这是最常见的被拒原因**——只声明 `dsh.client` 无法安装 |
@@ -155,3 +154,50 @@ git push -u origin main
 # 7. 在其 data/plugins/ 下新增 apex-mochen__dsh-clock-context.yml（内容见 §1）
 # 8. 提 PR，标题：add dsh-clock-context
 ```
+
+---
+
+## 6. 自审记录（对照社区《DSH 插件开发与设计规范建议 v0.1》）
+
+来源：`dsh-plugin-verify` 仓库 `docs/plugin-standards.md` + `docs/review-checklist.md`
+（官方 postmortem 0001/0002 与 defensive-patterns 提炼，非官方规范但审核员照此复核）。
+
+### 6.1 逐条核对
+
+| 规范条款 | 要求 | 本插件 | 证据 |
+|---|---|---|---|
+| §2.1 包结构 | `name`/`type`/`main`/`files`/`dsh.bundle.patch` | ✅ | `package.json`；另补了 `types` → `lib/index.d.ts` |
+| §2.2 入口红线 R1 | namespace 形式，禁**裸** `export default` | ✅ | `export const name` + `export function apply`；`export default` 是**对象**（规则允许的形式）。静态规则实测通过 |
+| §2.3 ESM 纪律 | 相对 import 带 `.js`；cordis 不入 `dependencies` | ✅ | 无相对 import；cordis 只在 `peerDependencies`（与已上架插件 `dshmarket` 同款），无 `dependencies` |
+| §3.2 patch 红线 R2 | `!!js` 只在 `config` 子树 | ✅ | patch 内**没有** `!!js`；静态规则实测通过 |
+| §3.3 条件启用 | 用 overlay，不用 `disabled: !!js` | ✅ | 未使用 `disabled` |
+| §4.1 资源释放 | 监听/定时器用 `ctx.effect` 包裹 | ✅ | 无定时器、无子进程；贡献由 `systemPrompt.context()` 返回的 disposer 随卸载清理 |
+| §4.2 服务注入 | 可选服务用 `ctx.inject` 动态注入 | ✅ | 用 `ctx.inject(['systemPrompt'], cb)`（与官方 `dsh-sandbox-policy` 同款）；避免 headless 加载树阻塞 |
+| §5 waterfall | 监听器必须透传 `next()` | ✅ N/A | 本插件**不注册任何 waterfall 监听器**，只贡献一条上下文文本 |
+| §6.5 system-prompt 注入 | 同步 provider；命名加前缀防重名 | ✅ | `text: () => string` 同步签名；名字 `clock:now` 带前缀 |
+| §6.5 `context()` 语义 | 动态快照，"变化才记录" | ✅ | 提供 `precision: 'second' \| 'minute'` 让运维在信息量与快照 churn 之间取舍 |
+| §8.1 npm 约定 | `files` 含 `lib` + `cordis.patch.yml`；keywords 带 `dsh`/`deepseek-harness`/`dsh-plugin` | ✅ | `npm pack --dry-run` 实测 9 个文件，无多余内容 |
+| §8.2 GitHub 约定 | `dsh-plugin` topic；`repository` 字段；README 写安装命令 + **安全提示** | ✅（topic 待加） | READMEs 均有安装命令与"安装授予进程级权限"章节 |
+| §8.3 patch 路径 | `insert: [{id, name}]`；仓库内安全相对路径 | ✅ | `./cordis.patch.yml` |
+
+### 6.2 人类评审层 7 条（defensive-patterns）结论
+
+`docs/review-checklist.md` 的 A–I 九组中，与本插件相关的只有 A/B 两组，其余（C 结果上报、
+D 双端契约、E 异步状态、F 资源释放、G 回调隔离、H 输出卫生、I link 路径）**全部 N/A**，
+因为本插件不产出结果、不持有异步状态、不 spawn 进程、不写临时文件、不删除路径。
+
+- A 组：无裸 `export default` ✅；default 对象自带 `name`/`apply` ✅；未对非 inject 服务调用 `ctx.get` ✅
+- B 组：无 `!!js` ✅；无条件 `disabled` ✅；不注册工具（R3 不适用）✅
+
+### 6.3 已完成的验证证据
+
+| 验证 | 命令 | 结果 |
+|---|---|---|
+| 单元测试（含夏令时、precision） | `node test/smoke.mjs` | **8 checks passed** |
+| 官方静态规则 R1/R2 | `node scripts/static-rules.mjs .` | **静态规则：全过** |
+| 发布产物装箱 | `npm pack --dry-run` | 9 个文件 / 14.1 kB，无多余文件 |
+| tarball 安装 → 组装树 | `dsh plugin --profile headless add <tgz>` | 树中出现 `dsh-clock-context` ✅ |
+| **运行时端到端** | headless agent 复述上下文时间行 | 与对照组**相差 2 秒** ✅ |
+| web profile 层叠组装 | `dsh --profile web --patch <probe> --dump-config` | 干净插入，**真实 profile 未被改动** ✅ |
+| 未通过项 | `@qing3a/dsh-plugin-verify` 完整运行时验证 | ⏳ 未跑（需要 DSH **源码** checkout，见 §2） |
+
