@@ -5,7 +5,12 @@
  */
 
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { apply, CONTEXT_NAME, DEFAULT_ORDER, name, renderClock, zoneOffsetMinutes } from '../lib/index.js';
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const patchPath = new URL('../cordis.patch.yml', import.meta.url);
+const patch = readFileSync(patchPath, 'utf8');
 
 let passed = 0;
 
@@ -126,6 +131,44 @@ test('falls back to the host zone when timeZone is omitted', () => {
   const line = renderClock({}, new Date('2026-09-12T05:04:27Z'));
   assert.match(line, /^Current date\/time: /);
   assert.ok(line.length > 60);
+});
+
+// ---------------------------------------------------------------------------
+// Packaging contract. These guard the failure mode that is worst to hit in the
+// wild: the plugin installs cleanly but never loads, because the name in
+// cordis.patch.yml does not match the package name the loader resolves.
+// ---------------------------------------------------------------------------
+
+test('package.json declares the bundle manifest the market requires', () => {
+  assert.equal(pkg.dsh?.bundle?.patch, './cordis.patch.yml');
+  assert.equal(pkg.main, 'lib/index.js');
+  assert.equal(pkg.type, 'module');
+  assert.equal(pkg.license, 'MIT');
+  assert.ok(existsSync(new URL('../lib/index.js', import.meta.url)), 'main must exist');
+  assert.ok(pkg.files.includes('lib'), 'files must ship lib/');
+  assert.ok(pkg.files.includes('cordis.patch.yml'), 'files must ship the patch');
+  for (const keyword of ['dsh', 'deepseek-harness', 'dsh-plugin']) {
+    assert.ok(pkg.keywords.includes(keyword), `keywords must include "${keyword}"`);
+  }
+});
+
+test('cordis.patch.yml inserts exactly this package, under this name', () => {
+  assert.match(patch, /^-\s+insert:/m, 'patch must carry an insert list');
+
+  const ids = [...patch.matchAll(/^\s+-\s+id:\s*(\S+)\s*$/gm)].map((m) => m[1]);
+  const names = [...patch.matchAll(/^\s+name:\s*['"]?([^'"\n]+?)['"]?\s*$/gm)].map((m) => m[1]);
+
+  assert.equal(ids.length, 1, 'patch must insert exactly one entry');
+  assert.equal(names.length, 1, 'patch must name exactly one package');
+  assert.equal(names[0], pkg.name, 'patch name must equal the package name');
+  assert.equal(ids[0], pkg.name, 'entry id should equal the package name');
+  assert.equal(names[0], name, 'patch name must equal the name the plugin exports');
+});
+
+test('the patch file the manifest points at is the one that exists', () => {
+  const target = new URL(`../${pkg.dsh.bundle.patch.replace(/^\.\//, '')}`, import.meta.url);
+  assert.ok(existsSync(target), `${pkg.dsh.bundle.patch} must exist`);
+  assert.equal(readFileSync(target, 'utf8'), patch, 'resolved patch must be the file under test');
 });
 
 console.log(`\n${passed} checks passed.\n`);

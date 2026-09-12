@@ -119,6 +119,24 @@ ctx.inject(['systemPrompt'], (scope) => {
 - Node.js 20+
 - **零运行时依赖**，只用 `Intl`
 
+## 和已有插件的关系
+
+如果你已经在用 [`liqiming-whu/dsh-environment-context`](https://github.com/liqiming-whu/dsh-environment-context)，
+那可能不需要装这个：它把**实时时间**作为"环境信息大礼包"的一项注入
+（还含天气、地点、电量、设备信息），并且带设置页。
+
+本插件是刻意做窄的：
+
+| | dsh-environment-context | dsh-clock-context |
+|---|---|---|
+| 范围 | 环境大礼包（时间 + 天气 + 地点 + 电量 + 设备） | **只做时间** |
+| 前端 | 有设置页（`dsh.client`） | 无 —— 配置写在 profile 的 patch 文件里 |
+| 依赖 | — | **零依赖**，实现就是一个文件、只用 `Intl` |
+| headless | — | 可用（不依赖 `webServer`） |
+| 精度控制 | — | `precision: 'second' \| 'minute'` |
+
+按需选一个即可：想要"时间 + 其它环境信息"，用那个。
+
 ## 安全提示
 
 **安装 DSH 插件等于授予它进程级权限。** 插件被加载进宿主进程，

@@ -125,6 +125,24 @@ the default `105` places the clock first.
 - Node.js 20+
 - No runtime dependencies — only `Intl`.
 
+## Relationship to existing plugins
+
+If you already run [`liqiming-whu/dsh-environment-context`](https://github.com/liqiming-whu/dsh-environment-context),
+you may not need this one: it injects **live time** as one item in a broader environment bundle
+(weather, location, battery, device) and ships a settings page.
+
+This plugin is deliberately narrower:
+
+| | dsh-environment-context | dsh-clock-context |
+|---|---|---|
+| Scope | environment bundle (time + weather + location + battery + device) | time only |
+| Frontend | settings page (`dsh.client`) | none — configured in the profile patch file |
+| Dependencies | — | zero; the implementation is one file using only `Intl` |
+| headless | — | works (no `webServer` dependency) |
+| Precision control | — | `precision: 'second' \| 'minute'` |
+
+Use whichever fits. If you want time plus the rest of the environment, use that one.
+
 ## Security
 
 **Installing a DSH plugin grants it process-level access.** A plugin is loaded into the host

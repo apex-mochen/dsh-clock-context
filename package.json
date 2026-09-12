@@ -17,6 +17,7 @@
     "README.md",
     "README.zh.md",
     "PUBLISHING.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "license": "MIT",
@@ -30,6 +31,7 @@
   },
   "keywords": [
     "deepseek",
+    "deepseek-harness",
     "harness",
     "dsh",
     "dsh-plugin",
@@ -38,13 +40,14 @@
     "current-time",
     "runtime-context",
     "context",
-    "session"
+    "system-prompt"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs",
+    "check": "node test/smoke.mjs && npm pack --dry-run"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"

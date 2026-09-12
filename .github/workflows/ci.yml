@@ -1,0 +1,32 @@
+name: ci
+
+# The plugin has no dependencies, so CI needs no install step — the whole check
+# is "run the smoke test on a supported Node, then confirm the packed tarball
+# contains what the manifest promises".
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Smoke test (runtime behaviour + packaging contract)
+        run: npm test
+      - name: Check the packed contents
+        run: npm pack --dry-run
