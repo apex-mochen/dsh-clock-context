@@ -35,19 +35,57 @@ data/plugins/apex-mochen__dsh-clock-context.yml
 ```yaml
 url: https://github.com/apex-mochen/dsh-clock-context
 name: apex-mochen/dsh-clock-context
-category: session
+category: tools
 description:
   en: Injects the current date and time into the runtime context on every turn, so the agent can read the time instead of inferring it.
   zh: 每一轮把当前日期时间注入运行上下文，让 agent 能读到准确时间而不是靠推算。
 ```
 
-> - `url` **必须与仓库地址完全一致**。
+> - `url` **必须与仓库地址完全一致**（`slugFor(url)` 必须等于文件名）。
 > - `category` 取值必须是官方列表之一：`agi` `ui` `usage` `theme` `model` `identity` `session` `memory` `tools` `wsl` `browser` `vision` `voice` `docs` `skill` `workflow` `git` `notify` `dev` `security` `remote` `market` `fun`。
+> - **不允许出现未知字段**：条目只接受 `url` / `name` / `category` / `description` / `tarball` 五个键（npm 包由工具自动从仓库解析，不在条目里声明）。
+> - 描述里若含 `": "`（冒号加空格）**必须加引号**，否则整个文件会被解析成映射而报 YAML 错。
+> - 每条描述必须是**单行**；`description.en` 必填，`zh` 可选（维护者会补）。
 > - 两版 README 由 `data/plugins/*.yml` **自动生成**，不要手工编辑。
 > - 一个插件一个文件，所以 PR 之间永不冲突。
 
-**为什么选 `session`**：本插件贡献的是**每一轮的运行上下文快照**（会话级别），
-不是 UI、不是工具、也不是模型接入，`session`（Sessions & Messages）最贴近。
+**为什么选 `tools`**：先按"最接近的同类插件"定，而不是按自己的直觉。
+市场上直接注入**实时时间**的插件是 `liqiming-whu/dsh-environment-context`
+（"Injects live time, weather, location, battery, and device context into the DSH system prompt"），
+它归在 **`tools`** 类。同类归同类，所以本插件也放 `tools`。
+
+> ℹ️ **修正一条早期判断**：曾一度认为市场上没有做时间注入的插件 —— 那是错的，
+> 当时只按插件名和部分描述关键词检索。上面的 `dsh-environment-context` 就在做这件事，
+> 只是它把时间作为"环境上下文"大礼包的一部分（还带天气/电量/设置页）。
+> 本插件的差异点是：**只做时间、零依赖、无前端、headless 可用、配置走 patch 文件**。
+> 这不影响收录（市场不要求首创），但**PR 描述里不能声称"没有同类"**。
+
+### 用官方校验器本地验一遍（推荐）
+
+市场的 CI 用 `scripts/check-submission.mjs` 检查投稿，它依赖 `GITHUB_TOKEN` 才能跑全量，
+但真正决定格式成败的是 `scripts/lib/entries.mjs` 里的 `readEntries` + `validateEntries`，
+这两个函数可以**直接在本地复用**：
+
+```js
+// 在市场仓库根目录放 validate-ours.mjs，然后：
+import { readEntries, validateEntries, slugFor, CAT_IDS, dumpEntry } from './scripts/lib/entries.mjs'
+const entries = readEntries(process.argv[2])
+console.log(validateEntries(entries))   // 空数组 = 全过
+```
+
+本插件的实测结果：
+
+```text
+读取到条目数: 1
+  url      : https://github.com/apex-mochen/dsh-clock-context
+  category : tools （在 CAT_IDS 中: true）
+  期望文件名: apex-mochen__dsh-clock-context.yml
+  实际文件名: apex-mochen__dsh-clock-context.yml
+VALIDATION: PASS  （官方校验器 0 个问题）
+```
+
+更进一步：官方 `dumpEntry()` 规范化输出的内容与手写的 yml **逐字节一致**，
+说明这份投稿文件与市场工具链自己生成的格式完全相同。
 
 ### PR 之后
 

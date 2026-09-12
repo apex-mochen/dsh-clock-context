@@ -3,7 +3,7 @@
 Adds a plugin that injects the current date and time into the runtime context on every turn.
 
 - Repo: https://github.com/apex-mochen/dsh-clock-context
-- Category: `session`
+- Category: `tools`
 - Install: `dsh plugin --profile web add github:apex-mochen/dsh-clock-context`
 
 ## What it does
@@ -31,6 +31,21 @@ agent that this value is authoritative and must not be guessed.
 - No process spawn, no filesystem access, no network, no timers.
 - `text()` is a sync provider, as required by the system-prompt seam.
 
+## Relationship to existing plugins
+
+`liqiming-whu/dsh-environment-context` (category `tools`) also injects live time, as one item in a
+broader environment bundle (weather, location, battery, device) with a settings page. This entry is
+deliberately narrower rather than a duplicate:
+
+- time only — one line, one concern;
+- no frontend, no settings page, no `dsh.client`;
+- zero dependencies and no process/filesystem/network access, so it can be audited in one sitting;
+- works in `headless` (no `webServer` dependency);
+- configured through the profile patch file instead of a UI.
+
+If you would rather fold this into that plugin, that is a reasonable call — say so and I will close
+this one instead of arguing for it.
+
 ## Verification performed locally
 
 | Check | Command | Result |
@@ -40,3 +55,4 @@ agent that this value is authoritative and must not be guessed.
 | Packed contents | `npm pack --dry-run` | 9 files, no stray artifacts |
 | Runtime end-to-end | install the packed tarball into a `headless` profile, ask the agent to quote its runtime context | quoted timestamp was within 2s of the host clock |
 | Web profile composition | `dsh --profile web --patch <probe> --dump-config` | inserts cleanly |
+| Entry file format | this repo's `readEntries` + `validateEntries` on the submitted yml | 0 problems; `dumpEntry()` round-trips byte-identically |
