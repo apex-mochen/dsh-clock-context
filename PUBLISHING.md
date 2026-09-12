@@ -114,10 +114,33 @@ dsh plugin --profile web add github:apex-mochen/dsh-clock-context
 node <验证器>/lib/cli.js <插件路径> --repo <DSH 源码 checkout>
 ```
 
-**它的前置要求（实测确认）**：`--repo` 必须指向 **DSH 源码 monorepo**
-（`preflight` 会检查 `pnpm-workspace.yaml` 是否存在，并用 `pnpm dsh ...` 调用），
-**npm 安装版（`node_modules/@deepseek-ai/dsh`）不满足**，会报
-`不是 DSH checkout: ...（缺 pnpm-workspace.yaml）`。
+**它的前置要求（实测确认，共三条）**：
+
+1. `--repo` 必须指向 **DSH 源码 monorepo** —— `preflight` 会检查 `pnpm-workspace.yaml`；
+   npm 安装版（`node_modules/@deepseek-ai/dsh`）**不满足**，会报
+   `不是 DSH checkout: ...（缺 pnpm-workspace.yaml）`。
+2. `pnpm` 可用（`preflight` 会跑 `pnpm --version`；DSH 锁 `pnpm@11.7.0`）。
+3. **仓库必须已经构建过** —— `preflight` 会检查这两个产物是否存在，缺失就报
+   `DSH 尚未构建：请先运行 pnpm run build:lib:host && pnpm run build:lib:client`：
+   ```text
+   packages/boot/app-boot/lib/index.js
+   packages/interaction/commands/lib/typert.host.js
+   ```
+
+**因此完整路径是 3 步**（实测耗时基线，2026-09-12）：
+
+```bash
+git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git   # 68 MB / 18 秒
+cd deepseek-harness
+pnpm install --frozen-lockfile        # 291 个 workspace 项目 / 1262 个包 ← 最耗时的一步
+pnpm run build:lib:host && pnpm run build:lib:client                      # tsc -b + tsdown
+node <验证器>/lib/cli.js <插件路径> --repo <本 checkout>                   # 才是真正的验证
+```
+
+> ⚠️ **成本提示**：这不是"秒出"的检查。`pnpm install` 要拉 1262 个包
+> （走代理时部分 tarball 只有 26~36 KiB/s），之后还要跑一遍全量 TypeScript 构建。
+> **建议在不需要用机器的时候做**，或者只在确实想要 Verified 徽章时再做。
+> 主市场（awesome-dsh-plugin）**不需要**这一步。
 
 验证器会做这些事（读源码得到）：
 1. 静态规则 R1（入口形态）/ R2（patch YAML 的 `!!js` 位置）
@@ -128,9 +151,8 @@ node <验证器>/lib/cli.js <插件路径> --repo <DSH 源码 checkout>
    `tools/pre-execute` · `tools/execute` · `tools/post-execute`
 5. 输出报告，退出码 `0=通过 / 1=未通过 / 2=环境错误`
 
-**结论**：要拿 Verified 徽章，需要先克隆 DSH 源码仓库（体积较大）。
-本插件不注册任何 waterfall 监听器，也不注入独有服务，预期可过，
-但**尚未实测**——等真的需要徽章时再克隆源码跑一次。
+**预期**：本插件不注册任何 waterfall 监听器、不贡献工具、不注入独有服务，
+所以那 7 条链**不应该受影响**；预期可过 → 但**尚未实测**（见下方状态）。
 
 静态规则本地可先跑（秒出，无需 checkout）：
 
