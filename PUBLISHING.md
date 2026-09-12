@@ -25,21 +25,17 @@
 **只新增一个文件**（不编辑自动生成的 README）：
 
 ```text
-data/plugins/<owner>__<repo>.yml
+data/plugins/apex-mochen__dsh-clock-context.yml
 ```
 
 文件名格式是 `<GitHub 用户名>__<仓库名>.yml`（双下划线）。
-例如用户名是 `dingdangmao`、仓库是 `dsh-clock-context`，则文件路径为：
-
-```text
-data/plugins/dingdangmao__dsh-clock-context.yml
-```
+本插件的用户名是 **apex-mochen**、仓库是 **dsh-clock-context**，所以文件名如上。
 
 ### 文件内容（可直接复制）
 
 ```yaml
-url: https://github.com/<owner>/dsh-clock-context
-name: <owner>/dsh-clock-context
+url: https://github.com/apex-mochen/dsh-clock-context
+name: apex-mochen/dsh-clock-context
 category: session
 description:
   en: Injects the current date and time into the runtime context on every turn, so the agent can read the time instead of inferring it.
@@ -57,12 +53,12 @@ description:
 ### PR 之后
 
 合并后市场会自动重建索引，你的插件出现在：
-`https://awesome-dsh-plugin.com/p/<owner>/dsh-clock-context/`
+`https://awesome-dsh-plugin.com/p/apex-mochen/dsh-clock-context/`
 
 安装方式随之变为：
 
 ```bash
-dsh plugin --profile web add github:<owner>/dsh-clock-context
+dsh plugin --profile web add github:apex-mochen/dsh-clock-context
 ```
 
 ---
@@ -149,13 +145,13 @@ git status
 
 # 2. 在 GitHub 网页新建空仓库 dsh-clock-context（public，不要勾选 README）
 # 3. 关联并推送
-git remote add origin https://github.com/<owner>/dsh-clock-context.git
+git remote add origin https://github.com/apex-mochen/dsh-clock-context.git
 git branch -M main
 git push -u origin main
 
 # 4. 在仓库 Settings → Topics 添加：dsh-plugin
 # 5. 等满 1 天（市场 CI 硬性检查）
 # 6. Fork awesome-dsh-plugin/awesome-dsh-plugin
-# 7. 在其 data/plugins/ 下新增 <owner>__dsh-clock-context.yml（内容见 §1）
+# 7. 在其 data/plugins/ 下新增 apex-mochen__dsh-clock-context.yml（内容见 §1）
 # 8. 提 PR，标题：add dsh-clock-context
 ```

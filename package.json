@@ -19,6 +19,14 @@
     "LICENSE"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apex-mochen/dsh-clock-context.git"
+  },
+  "homepage": "https://github.com/apex-mochen/dsh-clock-context#readme",
+  "bugs": {
+    "url": "https://github.com/apex-mochen/dsh-clock-context/issues"
+  },
   "keywords": [
     "deepseek",
     "harness",
