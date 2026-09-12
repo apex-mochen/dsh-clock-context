@@ -1,5 +1,30 @@
 # 上架指南（Publishing / Submission）
 
+> ## 📌 当前进度（2026-09-12）
+>
+> | 步骤 | 状态 |
+> |---|---|
+> | 仓库公开 + `dsh-plugin` topic + 描述 | ✅ https://github.com/apex-mochen/dsh-clock-context |
+> | **Verified 站投稿 PR** | ✅ **已提交** → https://github.com/qing3a/dsh-plugin-verify/pull/4 |
+> | **主市场投稿分支** | ✅ **已备好**（fork `apex-mochen/awesome-dsh-plugin`，分支 `add-dsh-clock-context`，文件已提交） |
+> | **主市场投稿 PR** | ⏳ **等仓库满 1 天**（2026-09-13 05:46 UTC / 本地 13:46）后开 |
+> | web profile 生效 | ⏳ 待重启 DSH Web |
+>
+> **开主市场 PR 的直达链接**（过了时间门槛点它即可）：
+>
+> ```
+> https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/compare/main...apex-mochen:add-dsh-clock-context?expand=1
+> ```
+>
+> 或者点 fork 页面顶部 GitHub 提示的 **Compare & pull request**。
+> 标题：`add dsh-clock-context`；正文用 `submission/PR-BODY.md`。
+>
+> ⚠️ **为什么不能现在就开**：主市场 CI 的 `scripts/check-submission.mjs` 里有
+> `MIN_AGE_DAYS = 1`（注释原文 "time cannot be counterfeited"），
+> 仓库 2026-09-12 05:46:52 UTC 创建，**未满 1 天的 PR 会被自动检查判失败**。
+> 市场自己的 contributing.md 也写了 "If you're just under the bar, finish the work and resubmit"。
+> 所以先备好分支、到点再开 PR —— 这样第一次提交就是绿的。
+
 本文列出把 `dsh-clock-context` 上架到 DSH 插件市场所需的**全部步骤与文件内容**。
 面向未来的自己：照着做即可，不需要重新调研。
 
