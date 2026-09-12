@@ -7,17 +7,41 @@
 > | 仓库公开 + `dsh-plugin` topic + 描述 | ✅ https://github.com/apex-mochen/dsh-clock-context |
 > | **Verified 站投稿 PR** | ✅ **已提交** → https://github.com/qing3a/dsh-plugin-verify/pull/4 |
 > | **主市场投稿分支** | ✅ **已备好**（fork `apex-mochen/awesome-dsh-plugin`，分支 `add-dsh-clock-context`，文件已提交） |
-> | **主市场投稿 PR** | ⏳ **等仓库满 1 天**（2026-09-13 05:46 UTC / 本地 13:46）后开 |
+> | **主市场投稿 PR** | ⏳ **已交给计划任务自动开**（见下） |
 > | web profile 生效 | ⏳ 待重启 DSH Web |
 >
-> **开主市场 PR 的直达链接**（过了时间门槛点它即可）：
+> ### 主市场 PR 是自动开的（计划任务）
 >
+> 因为 agent 无法在会话之外自己醒来，所以这件事交给 Windows 计划任务：
+>
+> | 项 | 值 |
+> |---|---|
+> | 任务名 | `dsh-clock-context-open-market-pr` |
+> | 脚本 | `open-market-pr.ps1`（仓库根目录） |
+> | 触发 | 2026-09-13 13:50 起，**每 30 分钟一次，持续 5 小时** |
+> | 幂等 | 已存在 PR 就立即退出 —— 重复触发无副作用 |
+> | 守卫 | 仓库未满 1 天时直接退出（**绝不制造必然失败的红叉 PR**） |
+> | 凭据 | **不落盘**：每次运行时才用 `git credential fill` 从凭据管理器取 |
+> | 日志 | `open-market-pr.log`（已被 `.gitignore` 忽略） |
+>
+> **查看结果**
+> ```powershell
+> Get-Content 'E:\下载\deepseek-harness-worker\dsh-clock-context\open-market-pr.log' -Tail 20
+> Get-ScheduledTask -TaskName dsh-clock-context-open-market-pr | Select-Object TaskName, State
+> ```
+> **不再需要就取消**
+> ```powershell
+> Unregister-ScheduledTask -TaskName dsh-clock-context-open-market-pr -Confirm:$false
+> ```
+> **手动立刻开一次**（过了门槛之后）
+> ```powershell
+> powershell -NoProfile -ExecutionPolicy Bypass -File 'E:\下载\deepseek-harness-worker\dsh-clock-context\open-market-pr.ps1'
+> ```
+>
+> 也可以完全不用脚本，直接在浏览器点这个链接开：
 > ```
 > https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/compare/main...apex-mochen:add-dsh-clock-context?expand=1
 > ```
->
-> 或者点 fork 页面顶部 GitHub 提示的 **Compare & pull request**。
-> 标题：`add dsh-clock-context`；正文用 `submission/PR-BODY.md`。
 >
 > ⚠️ **为什么不能现在就开**：主市场 CI 的 `scripts/check-submission.mjs` 里有
 > `MIN_AGE_DAYS = 1`（注释原文 "time cannot be counterfeited"），
