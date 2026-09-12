@@ -201,3 +201,56 @@ D 双端契约、E 异步状态、F 资源释放、G 回调隔离、H 输出卫�
 | web profile 层叠组装 | `dsh --profile web --patch <probe> --dump-config` | 干净插入，**真实 profile 未被改动** ✅ |
 | 未通过项 | `@qing3a/dsh-plugin-verify` 完整运行时验证 | ⏳ 未跑（需要 DSH **源码** checkout，见 §2） |
 
+---
+
+## 7. 本地安装与开发
+
+### 7.1 用 `dev-install.ps1`（推荐）
+
+```powershell
+.\dev-install.ps1            # 打包并装到 web profile
+.\dev-install.ps1 headless   # 打包并装到 headless profile
+```
+
+脚本做三件事：`npm pack` → `dsh plugin --profile <p> add <tgz>` → `--dump-config` 确认进了组装树。
+
+**为什么用 tarball 而不是直接指目录**：tarball 就是发布到 npm / 市场的那份产物，
+用它安装能保证「本地测的」和「发出去的」是同一个东西；而且不再需要在别处维护第二份副本 ——
+本次就踩到过：工作区源码已更新（加了 `precision` / 类型 / 安全提示），而
+`C:\Users\ASUS\dsh-plugins\` 的那份副本还是旧版，差点装出旧版本。
+
+### 7.2 ⚠️ `.ps1` 文件必须带 UTF-8 BOM
+
+`dev-install.ps1` 里含中文，**必须**存成 UTF-8 **带 BOM**：
+Windows PowerShell 5.1 对无 BOM 的文件按 ANSI（本机是 GBK）解码，
+中文会变成乱码并触发语法错误（本次实测：`Unexpected token '纭...'`）。
+PowerShell 7 无此问题，但只要有人用 5.1 跑，就得以 BOM 为准。
+
+> 这与项目里 `.md` 必须带 BOM 是同一个根因：**凡是被 Windows 工具读取、且含非 ASCII 的文件，
+> 都要靠 BOM 告诉它"这是 UTF-8"**。反之，知识库 `D:\myknowledge` 的 `.md` 约定**不带** BOM，
+> `.js` / `.json` 也不带 —— 按各自生态的惯例来。
+
+### 7.3 已经准备好的投稿包
+
+`submission/` 目录里是上架那一刻要用的成品，不需要随 npm 包发布：
+
+| 文件 | 用途 |
+|---|---|
+| `submission/apex-mochen__dsh-clock-context.yml` | 直接放进 fork 的 `data/plugins/` —— **这就是整个投稿** |
+| `submission/PR-BODY.md` | 提 PR 时贴进描述框 |
+| `submission/README.md` | 投稿包的使用说明与前置条件清单 |
+
+### 7.4 开发循环
+
+```powershell
+# 改代码
+node test/smoke.mjs                                         # 单元测试（秒出）
+node <验证器>\scripts\static-rules.mjs .                    # 静态规则（秒出，不联网）
+.\dev-install.ps1 headless                                  # 装到测试 profile
+dsh --profile headless "把运行上下文里给当前时间的那一行原文引用出来。"   # 端到端
+# 确认无误后：
+git add -A; git commit -m "..."; git push
+.\dev-install.ps1                                           # 再装到你日常用的 web profile
+```
+
+
