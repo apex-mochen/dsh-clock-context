@@ -1,0 +1,7 @@
+# Normalise line endings in the repository: keep LF in git, do not rewrite on checkout.
+* text=auto eol=lf
+
+# Binary-ish files that must never be touched.
+*.png binary
+*.jpg binary
+*.ico binary
