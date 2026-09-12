@@ -155,6 +155,14 @@ declared schema, that is a small addition, not a redesign — say so and it will
 in. That position argues for the smallest possible surface: one file, Node built-ins only, nothing to
 audit beyond it.
 
+**Does a value that changes every turn bloat the session?** No. `RuntimeContextProjection.project()`
+returns a candidate snapshot only when the rendered text differs from the retained one, and a new
+snapshot supersedes the previous rather than joining it — the snapshot text says so itself
+("This snapshot supersedes earlier runtime-context snapshots"). So a session holds one clock line,
+not one per turn. Checked two ways: by reading the projection in `dsh-agent-loop`, and by running a
+multi-turn headless task in which the agent was asked to count `Current date/time:` lines in its own
+context — it reported exactly one.
+
 ## Compatibility
 
 - DSH `0.1.x` (peer: `@deepseek-ai/cordis ^4.0.1`)

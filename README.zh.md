@@ -143,6 +143,12 @@ system-prompt 这个 seam 有三个注册点：`section` 放静态指引，`vari
 **为什么零依赖。** 这个插件会加载进它所在 profile 的每一个会话。这个位置要求尽可能地小：
 一个文件、只用 Node 内置模块、除它之外没有需要审计的东西。
 
+**每轮都变的值会不会把会话撑大？** 不会。`RuntimeContextProjection.project()` 只在渲染文本与
+已保留的那份**不同**时才生成候选快照，而且新快照是**取代**旧的、不是追加 —— 快照文本本身就写着
+"This snapshot supersedes earlier runtime-context snapshots"。所以一个会话里只有一行时钟，
+不是每轮一行。**两种方式都验证过**：读 `dsh-agent-loop` 的投影源码；以及跑一个多轮 headless 任务，
+让 agent 数自己上下文里的 `Current date/time:` 行数 —— 它报的就是 **1**。
+
 ## 兼容性
 
 - DSH `0.1.x`（peer：`@deepseek-ai/cordis ^4.0.1`）

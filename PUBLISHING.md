@@ -241,6 +241,7 @@ D 双端契约、E 异步状态、F 资源释放、G 回调隔离、H 输出卫�
 | **配置链路（本轮补的缺口）** | id 定位 patch 覆盖 6 个选项后跑 headless | **6/6 全部生效**，epoch 数值精确吻合 ✅ 见 §6.4 |
 | **关闭开关（反向验证）** | `enabled: false` 后跑 headless | agent 回答「没有」；其推理显示上下文里只有 file policy / approval policy ✅ |
 | 卸载回滚 | `dsh plugin --profile headless remove` | bundles 与 dependencies 均干净移除，装回一条命令 ✅ |
+| **快照是否累积**（每轮变化的最大隐患） | 读 `dsh-agent-loop` 的 `RuntimeContextProjection` + 多轮 headless 让 agent 数行数 | **替换而非累积**；agent 报「只有 1 行」✅ |
 | CI 工作流语法 | 用 js-yaml 解析 + 结构断言 | PASS ✅ |
 | 未通过项 | `@qing3a/dsh-plugin-verify` 完整运行时验证 | ⏳ 未跑（需要 DSH **源码** checkout，见 §2） |
 
