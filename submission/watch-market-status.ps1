@@ -6,11 +6,18 @@
 #   1. 查投稿 PR 的状态（还没开 / open / merged / closed 未合并）
 #   2. 查官方目录 plugins.json 里有没有我们的插件名
 #   3. 查详情页 https://awesome-dsh-plugin.com/p/apex-mochen/dsh-clock-context/ 是否 200
-#   4. 一旦确认上架 → 弹通知 + 在桌面写一份验证说明 → 注销自己的计划任务（不再打扰）
+#   4. 一旦确认上架 → 写桌面说明 → 注销自己的计划任务 → **弹一个对话框通知你**
 #
-# 幂等且无害：只读 API / 只写日志与桌面提示，绝不修改任何仓库。
+# 通知为什么要放最后、而且用独立进程弹：
+#   对话框是模态的，会一直等到你点掉。如果先弹通知再收尾，任务会被执行时限（10 分钟）杀掉，
+#   桌面文件和"注销自己"就可能没做完。所以顺序是：写文件 → 注销任务 → 最后通知。
 #
-# 手动运行：powershell -NoProfile -ExecutionPolicy Bypass -File .\watch-market-status.ps1
+# 自测（不碰真实状态、不注销任务）：
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\watch-market-status.ps1 -TestNotify
+#
+# 幂等且无害：只读 API / 只写日志、桌面提示与自己的任务。
+
+param([switch]$TestNotify)
 
 $ErrorActionPreference = 'Continue'
 
@@ -18,13 +25,15 @@ $Proxy     = 'http://127.0.0.1:7890'
 $Plugin    = 'dsh-clock-context'
 $Upstream  = 'awesome-dsh-plugin/awesome-dsh-plugin'
 $Fork      = 'apex-mochen'
-$Branch    = 'add-dsh-clock-context'
 # PR 的 head 过滤必须是 "owner:branch"（不带仓库名），否则永远查不到 PR
-$Owner    = 'apex-mochen'
+$Owner     = 'apex-mochen'
+$Branch    = 'add-dsh-clock-context'
 $PageUrl   = "https://awesome-dsh-plugin.com/p/$Fork/$Plugin/"
 $TaskName  = 'dsh-clock-context-watch-market'
 $LogPath   = Join-Path $PSScriptRoot 'market-status.log'
 $DeskFile  = Join-Path ([Environment]::GetFolderPath('Desktop')) "dsh-clock-context-已上架.txt"
+
+if ($TestNotify) { $DeskFile = Join-Path ([Environment]::GetFolderPath('Desktop')) "dsh-clock-context-通知自测.txt" }
 
 function Log([string]$msg) {
     $line = '{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg
@@ -32,19 +41,31 @@ function Log([string]$msg) {
     Add-Content -Path $LogPath -Value $line -Encoding UTF8
 }
 
+# 用独立进程弹模态对话框：脚本不必等它，通知又一定会出现在桌面上。
+# 托盘的 balloon 在 Win11 上可能被"专注助手"吞掉，所以只作为补充。
 function Notify([string]$title, [string]$text) {
     try {
+        $body = $text.Replace("'", "''")
+        $t    = $title.Replace("'", "''")
+        $cmd  = "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('$body', '$t', 'OK', 'Information') | Out-Null"
+        Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile', '-WindowStyle', 'Hidden', '-Command', $cmd | Out-Null
+        Log '已弹出通知对话框'
+    } catch {
+        Log "（弹对话框失败：$($_.Exception.Message)）"
+    }
+    try {
         Add-Type -AssemblyName System.Windows.Forms
+        Add-Type -AssemblyName System.Drawing
         $ni = New-Object System.Windows.Forms.NotifyIcon
         $ni.Icon = [System.Drawing.SystemIcons]::Information
         $ni.BalloonTipTitle = $title
         $ni.BalloonTipText  = $text
         $ni.Visible = $true
-        $ni.ShowBalloonTip(30000)
-        Start-Sleep -Seconds 6
+        $ni.ShowBalloonTip(15000)
+        Start-Sleep -Seconds 4
         $ni.Dispose()
     } catch {
-        Log "（通知弹出失败，不影响其它动作：$($_.Exception.Message)）"
+        Log "（托盘气泡失败，不影响对话框：$($_.Exception.Message)）"
     }
 }
 
@@ -107,10 +128,13 @@ try {
 }
 
 # ---------------------------------------------------------------- 4. 上架了就通知并收工
-if ($listed) {
+if ($listed -or $TestNotify) {
+
+    $head = if ($TestNotify) { '（这是通知机制自测，不是真的上架）' } else { '已经上架到 DSH 插件市场了。' }
+
     $body = @"
-dsh-clock-context 已经上架到 DSH 插件市场了。
-（本文件由计划任务 $TaskName 自动生成，看完可以删掉）
+dsh-clock-context $head
+（本文件由计划任务 $TaskName 生成，看完可以删掉）
 
 == 怎么验证 ==
 
@@ -132,26 +156,28 @@ dsh-clock-context 已经上架到 DSH 插件市场了。
 
 web profile 里已经装好并生效了 —— 每轮运行上下文里都会有这样一行：
 
-  Current date/time: 2026年09月12日星期六 14:03:49 (Asia/Shanghai, UTC+08:00) · UTC 2026-09-12T06:03:49Z. ...
+  Current date/time: ... (Asia/Shanghai, UTC+08:00) · UTC ...
 
 想确认就问我一句："把运行上下文里给当前时间的那一行原文引用出来"。
 
 == 收尾 ==
 
-本监控任务已经完成使命并自动注销，不会再打扰你。
 详细日志：$LogPath
 "@
     try {
         Set-Content -Path $DeskFile -Value $body -Encoding UTF8
-        Log "已在桌面写入说明：$DeskFile"
+        Log "已写桌面说明：$DeskFile"
     } catch { Log "（写桌面文件失败：$($_.Exception.Message)）" }
 
-    Notify 'dsh-clock-context 已上架 ✅' '插件市场已收录，桌面有一份验证说明。（监控任务已自动注销）'
+    if (-not $TestNotify) {
+        try {
+            Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
+            Log "已注销计划任务 $TaskName —— 监控结束"
+        } catch { Log "（注销任务失败，可手动执行：Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false）" }
+    }
 
-    try {
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
-        Log "已注销计划任务 $TaskName —— 监控结束"
-    } catch { Log "（注销任务失败，可手动执行：Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false）" }
+    # 通知放最后：它是模态的，可能一直挂到你点掉
+    Notify 'dsh-clock-context 已上架 ✅' "插件市场已收录。桌面有验证说明：`n$DeskFile`n`n（监控任务已自动注销，不再打扰）"
 }
 
 Log '--- 检查结束 ---'
