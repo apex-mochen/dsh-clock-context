@@ -19,6 +19,8 @@ $Plugin    = 'dsh-clock-context'
 $Upstream  = 'awesome-dsh-plugin/awesome-dsh-plugin'
 $Fork      = 'apex-mochen'
 $Branch    = 'add-dsh-clock-context'
+# PR 的 head 过滤必须是 "owner:branch"（不带仓库名），否则永远查不到 PR
+$Owner    = 'apex-mochen'
 $PageUrl   = "https://awesome-dsh-plugin.com/p/$Fork/$Plugin/"
 $TaskName  = 'dsh-clock-context-watch-market'
 $LogPath   = Join-Path $PSScriptRoot 'market-status.log'
@@ -62,7 +64,7 @@ if ($tok) {
 $prState = 'none'
 $prLine  = 'PR 还没创建（等 open-market-pr 计划任务开出来）'
 try {
-    $prs = Invoke-RestMethod "https://api.github.com/repos/$Upstream/pulls?state=all&head=${Fork}:$Branch" `
+    $prs = Invoke-RestMethod "https://api.github.com/repos/$Upstream/pulls?state=all&head=${Owner}:$Branch" `
         -Headers $Headers -Proxy $Proxy -TimeoutSec 40
     if ($prs -and @($prs).Count -gt 0) {
         $pr = @($prs)[0]
@@ -71,7 +73,7 @@ try {
             $prLine = "PR #$($pr.number) 已合并（$($pr.merged_at)）  $($pr.html_url)"
         } elseif ($pr.state -eq 'open') {
             $prState = 'open'
-            $age = [math]::Round(((Get-Date).ToUniversalTime() - [datetime]::Parse($pr.created_at)).TotalHours, 1)
+            $age = [math]::Round(((Get-Date) - [datetime]::Parse($pr.created_at).ToLocalTime()).TotalHours, 1)
             $prLine = "PR #$($pr.number) 开着，已等 $age 小时，等待维护者 review  $($pr.html_url)"
         } else {
             $prState = 'closed'

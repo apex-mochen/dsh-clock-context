@@ -17,10 +17,15 @@ $Proxy      = 'http://127.0.0.1:7890'
 $PluginRepo = 'apex-mochen/dsh-clock-context'
 $Upstream   = 'awesome-dsh-plugin/awesome-dsh-plugin'
 $Fork       = 'apex-mochen/awesome-dsh-plugin'
+# PR 的 head 必须是 "owner:branch"，不能带仓库名 —— 曾经写成 "${Fork}:$Branch"，
+# 拼出 "apex-mochen/awesome-dsh-plugin:add-dsh-clock-context" → GitHub 报 head invalid (422)
+$Owner      = 'apex-mochen'
 $Branch     = 'add-dsh-clock-context'
 $Title      = 'add dsh-clock-context'
 $LogPath    = Join-Path $PSScriptRoot 'open-market-pr.log'
-$BodyPath   = Join-Path $PSScriptRoot 'submission\PR-BODY.md'
+# 脚本就在 submission/ 里，PR 正文与它同目录（曾经写成 'submission\PR-BODY.md'，
+# 搬家之后就找不到文件了，PR 正文会静默退化成一句占位符）
+$BodyPath   = Join-Path $PSScriptRoot 'PR-BODY.md'
 
 function Log([string]$msg) {
     $line = '{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $msg
@@ -59,23 +64,41 @@ try {
     Log "门槛已过（仓库创建于 $($created.ToString('u'))）"
 
     # ---- 守卫 2：PR 是否已存在（幂等）---------------------------------------------
-    $existing = Invoke-RestMethod "https://api.github.com/repos/$Upstream/pulls?state=all&head=${Fork}:$Branch" -Headers $Headers -Proxy $Proxy -TimeoutSec 40
+    $existing = Invoke-RestMethod "https://api.github.com/repos/$Upstream/pulls?state=all&head=${Owner}:$Branch" -Headers $Headers -Proxy $Proxy -TimeoutSec 40
     if ($existing -and $existing.Count -gt 0) {
         Log "PR 已存在：#$($existing[0].number) $($existing[0].html_url) —— 退出"
         exit 0
     }
 
     # ---- 守卫 3：分支上的投稿文件是否就位 -----------------------------------------
-    $target = 'data/plugins/apex-mochen__dsh-clock-context.yml'
-    $file = Invoke-RestMethod "https://api.github.com/repos/$Fork/contents/$target?ref=$Branch" -Headers $Headers -Proxy $Proxy -TimeoutSec 40
+    # ⚠️ 必须用 -f 拼 URL，不能写成 "…/$target?ref=$Branch"：
+    #    PowerShell 允许 `?` 出现在裸变量名里（就像 $?），所以 $target?ref 会被当成
+    #    【一个变量】解析 → 未定义 → 空 → URL 静默变成 `…/contents/=add-dsh-clock-context`
+    #    → 404。这个 bug 曾让本脚本连续失败约 115 次（2026-09-13~14），所以下面加了断言。
+    $target     = 'data/plugins/apex-mochen__dsh-clock-context.yml'
+    $contentsUrl = 'https://api.github.com/repos/{0}/contents/{1}?ref={2}' -f $Fork, $target, $Branch
+    if ($contentsUrl -notmatch '/contents/data/plugins/.+\?ref=add-dsh-clock-context$') {
+        throw "URL 构造异常，拒绝继续：$contentsUrl"
+    }
+    $file = Invoke-RestMethod $contentsUrl -Headers $Headers -Proxy $Proxy -TimeoutSec 40
     $remoteYml = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($file.content))
     Log "分支文件就位：$target（$($file.size) bytes）"
 
     # ---- 开 PR --------------------------------------------------------------------
-    $body = if (Test-Path $BodyPath) { Get-Content $BodyPath -Raw -Encoding UTF8 } else { 'Adds dsh-clock-context.' }
+    # ⚠️ 必须用 .NET 读正文：Get-Content 会给返回的字符串挂上 PSPath / PSParentPath 等
+    #    注记属性，ConvertTo-Json 见到这些属性就把正文序列化成 {"value": …} 对象，
+    #    GitHub 直接回 422 Unprocessable Entity（本脚本第二次踩到，2026-09-14）。
+    $body = if (Test-Path $BodyPath) {
+        [System.IO.File]::ReadAllText($BodyPath, [System.Text.Encoding]::UTF8)
+    } else {
+        'Adds dsh-clock-context.'
+    }
+    $body = [string]$body
+    if ($body -notmatch '^#') { throw "PR 正文读取异常（不是纯文本）：$($body.GetType().FullName)" }
+
     $payload = @{
         title = $Title
-        head  = "${Fork}:$Branch"
+        head  = "${Owner}:$Branch"
         base  = 'main'
         body  = $body
     } | ConvertTo-Json -Depth 4
