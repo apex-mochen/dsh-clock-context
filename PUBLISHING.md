@@ -1,4 +1,4 @@
-# 上架指南（Publishing / Submission）
+﻿# 上架指南（Publishing / Submission）
 
 > ## 📌 当前进度（2026-09-12）
 >
@@ -551,4 +551,50 @@ git add -A; git commit -m "..."; git push
 .\dev-install.ps1                                           # 再装到你日常用的 web profile
 ```
 
+---
 
+## 9. ⚠️ 2026-09-15 发现：监控任务被另一个工作区的副本接管了
+
+**现象**：本仓库的 `submission/market-status.log` 停在 2026-09-14 13:00 不再更新，
+但任务计划程序显示任务每 30 分钟正常执行、返回 0。
+
+**根因**：计划任务的动作被改指向了**另一个工作区**里的同名脚本：
+
+```text
+C:\Users\ASUS\Documents\Codex\2026-09-12\referenced-chatgpt-conversation-this-is-an\
+  work\projects\deepseek-harness-worker\dsh-clock-context\submission\
+      watch-market-status.ps1      ← 任务实际运行的
+      open-market-pr.ps1
+      market-status.log            ← 日志写在这里（一直在更新）
+```
+
+即：另一个 agent（Codex，按 ai-team 的 `work/projects/<项目名>/` 结构）把整个项目镜像了一份，
+并把两个计划任务重新注册到它的副本上。**两份脚本当时完全相同（diff = 0 行）**，
+所以监控功能没有受影响 —— 只是日志分裂到了两个位置。
+
+**这正是本项目知识库里那篇
+《多个助手协作要收敛唯一项目路径》描述的同一个失效模式**，只不过这次发生在自动化脚本上：
+
+| 症状 | 真实原因 |
+|---|---|
+| 日志停更 | 任务换了脚本副本，写去了另一个日志 |
+| 任务"正常" | 它确实正常，只是跑的不是我这份 |
+| 差点再次误判 | 如果只看日志，会以为监控挂了 |
+
+**排查方法（记住这三条）**：
+
+```powershell
+# 1. 任务到底在跑哪个脚本 —— 决定性证据
+Get-ScheduledTask | Where-Object TaskName -like 'dsh-clock*' |
+  ForEach-Object { $_.TaskName + ' → ' + $_.Actions[0].Arguments }
+
+# 2. 任务自身的运行记录
+Get-ScheduledTask -TaskName 'dsh-clock-context-watch-market' | Get-ScheduledTaskInfo
+
+# 3. 两份日志都要看
+Get-ChildItem 'C:\Users\ASUS\Documents\Codex' -Recurse -Filter 'market-status.log' -ErrorAction SilentlyContinue
+```
+
+**待收敛**：同一套自动化不应存在两份副本。建议保留一份为权威
+（GitHub 上的仓库由 `E:\下载\deepseek-harness-worker\dsh-clock-context` 推送，
+那一份有完整 21 个提交历史），把计划任务指回它；或者明确反向同步规则。
